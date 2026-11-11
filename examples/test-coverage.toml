@@ -1,0 +1,11 @@
+namespace = "example"
+
+[[task]]
+name = "test coverage"
+schedule = "CRON_TZ=Europe/London 0 2 * * 6"
+model = "claude-opus-5-5"
+prompt = "prompts/test-coverage.md"
+repositories = ["https://github.com/example-org/example"]
+environment_id = "env_example"
+enabled = true
+effort = "high"
