@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The optional manifest field `chat_project_id` places a task in a claude.ai
+  project, whose documents a run can read and write. A deployment stops when an
+  existing task's project differs from its entry.
+
 ## [0.1.0] - 2026-11-14
 
 Initial release.

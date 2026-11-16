@@ -73,8 +73,9 @@ The skill has these known limitations:
 
 - It deploys each task without
   [connectors](https://code.claude.com/docs/en/routines#connectors).
-- It deploys each task outside the projects of claude.ai, so a run cannot read a
-  project's documents.
+- It sets the claude.ai project of a task only when it creates the task. To move
+  a task to another project or out of a project, the task must be deleted on
+  claude.ai and deployed again.
 - It cannot delete a task. When an entry is removed from its manifest or
   renamed, its task stays on claude.ai and keeps its schedule.
 

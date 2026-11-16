@@ -28,7 +28,7 @@ REQUIRED = {
     "environment_id": str,
     "enabled": bool,
 }
-OPTIONAL = {"effort": str}
+OPTIONAL = {"effort": str, "chat_project_id": str}
 COMPARED = tuple(name for name in REQUIRED | OPTIONAL if name != "name")
 JOB_CONFIG = ("model", "prompt", "repositories", "environment_id", "effort")
 
@@ -140,6 +140,7 @@ def task_values(task: dict) -> dict:
         "environment_id": ccr.get("environment_id"),
         "enabled": task.get("enabled"),
         "effort": context.get("effort_level"),
+        "chat_project_id": task.get("chat_project_id"),
     }
 
 
@@ -180,16 +181,16 @@ def job_config(entry: Entry) -> dict:
 
 
 def create_call(entry: Entry) -> dict:
-    return {
-        "action": "create",
-        "body": {
-            "name": entry.task_name,
-            "cron_expression": entry.values["schedule"],
-            "enabled": entry.values["enabled"],
-            "clear_mcp_connections": True,
-            "job_config": job_config(entry),
-        },
+    body = {
+        "name": entry.task_name,
+        "cron_expression": entry.values["schedule"],
+        "enabled": entry.values["enabled"],
+        "clear_mcp_connections": True,
+        "job_config": job_config(entry),
     }
+    if "chat_project_id" in entry.values:
+        body["chat_project_id"] = entry.values["chat_project_id"]
+    return {"action": "create", "body": body}
 
 
 def update_call(entry: Entry, task: dict, found: list[str]) -> dict:
@@ -229,6 +230,12 @@ def make_plan(paths: list[str], tasks: list[dict]) -> list[Outcome]:
             continue
         task = matches[0]
         found = differences(entry, task)
+        if "chat_project_id" in found:
+            raise SystemExit(
+                f"the `chat_project_id` of the task {task['id']} differs from its "
+                f"entry `{entry.task_name}`. An update cannot change a task's "
+                "project, so the task must be deleted on claude.ai and deployed again."
+            )
         if found:
             call = update_call(entry, task, found)
             outcomes.append(Outcome(entry, "update", task, found, call))

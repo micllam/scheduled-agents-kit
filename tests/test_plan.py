@@ -138,6 +138,11 @@ class PlanTest(unittest.TestCase):
             self.assertRaisesRegex(SystemExit, "share the name"),
         ):
             self.make_plan([task(), task(id="trig_other")])
+        with (
+            self.subTest("task in another project"),
+            self.assertRaisesRegex(SystemExit, "cannot change a task's project"),
+        ):
+            self.make_plan([task(chat_project_id="claude_proj_other")])
         listings = {
             "invalid JSON": ("{", "must contain the JSON response"),
             "no data": ("{}", "must contain the list `data`"),
@@ -161,6 +166,10 @@ class PlanTest(unittest.TestCase):
             ccr["events"][0]["data"]["message"]["content"], PROMPT.removesuffix("\n")
         )
         self.assertEqual(ccr["session_context"]["effort_level"], "high")
+        self.assertNotIn("chat_project_id", body)
+        self.write("manifest.toml", MANIFEST + 'chat_project_id = "claude_proj_x"\n')
+        body = self.make_plan([])[0].call["body"]
+        self.assertEqual(body["chat_project_id"], "claude_proj_x")
 
     def test_update_contains_the_differing_fields(self):
         def ccr(record):
