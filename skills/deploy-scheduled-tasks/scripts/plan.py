@@ -23,7 +23,7 @@ REQUIRED = {
     "name": str,
     "schedule": str,
     "model": str,
-    "prompt": str,
+    "prompt": (str, list),
     "repositories": list,
     "environment_id": str,
     "enabled": bool,
@@ -35,11 +35,11 @@ JOB_CONFIG = ("model", "prompt", "repositories", "environment_id", "effort")
 
 @dataclass
 class Entry:
-    """A manifest entry. `values["prompt"]` is the text of its prompt file."""
+    """A manifest entry. `values["prompt"]` is the text of its prompt file(s)."""
 
     task_name: str
     values: dict
-    prompt_path: str
+    prompt_paths: list[str]
 
 
 @dataclass
@@ -74,9 +74,26 @@ def check_entry(entry: object, where: str) -> None:
         raise SystemExit(f"{where}: {', '.join(problems)}")
     for name, kind in (REQUIRED | OPTIONAL).items():
         if name in entry and not isinstance(entry[name], kind):
-            raise SystemExit(f"{where}: `{name}` must be a {kind.__name__}")
+            kinds = kind if isinstance(kind, tuple) else (kind,)
+            kind_names = " or a ".join(item.__name__ for item in kinds)
+            raise SystemExit(f"{where}: `{name}` must be a {kind_names}")
     if not all(isinstance(url, str) for url in entry["repositories"]):
         raise SystemExit(f"{where}: `repositories` must be a list of strings")
+
+
+def prompt_paths(entry: dict, manifest: str, where: str) -> list[str]:
+    """Return the paths of the prompt file(s) of `entry` as a list."""
+    prompt = entry["prompt"]
+    names = [prompt] if isinstance(prompt, str) else prompt
+    if not (names and all(isinstance(name, str) for name in names)):
+        raise SystemExit(f"{where}: `prompt` must be a non-empty list of strings")
+    return [os.path.join(os.path.dirname(manifest), name) for name in names]
+
+
+def read_prompt(paths: list[str], where: str) -> str:
+    """Return the texts of the files at `paths` without their final line
+    endings, joined in order with an empty line between two files."""
+    return "\n\n".join(read_text(path, where).removesuffix("\n") for path in paths)
 
 
 def read_manifest(path: str) -> list[Entry]:
@@ -98,13 +115,12 @@ def read_manifest(path: str) -> list[Entry]:
     for index, values in enumerate(tables, start=1):
         where = f"{path}, entry {index}"
         check_entry(values, where)
-        prompt_path = os.path.join(os.path.dirname(path), values["prompt"])
-        prompt = read_text(prompt_path, where).removesuffix("\n")
+        paths = prompt_paths(values, path, where)
         entries.append(
             Entry(
                 task_name=f"{namespace}: {values['name']}",
-                values=values | {"prompt": prompt},
-                prompt_path=prompt_path,
+                values=values | {"prompt": read_prompt(paths, where)},
+                prompt_paths=paths,
             )
         )
     return entries
@@ -263,7 +279,7 @@ def prompt_diff(outcome: Outcome) -> str:
         stored.splitlines(),
         outcome.entry.values["prompt"].splitlines(),
         fromfile=f"task {outcome.task['id']}",
-        tofile=outcome.entry.prompt_path,
+        tofile=" + ".join(outcome.entry.prompt_paths),
         lineterm="",
     )
     return "\n".join(lines) or "The prompts differ in their line endings only."

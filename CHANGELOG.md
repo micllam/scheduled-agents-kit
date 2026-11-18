@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The prompt of a task can be composed from several prompt files by setting the
+  manifest field `prompt` to a list.
+
 ## [0.2.0] - 2026-11-16
 
 ### Added

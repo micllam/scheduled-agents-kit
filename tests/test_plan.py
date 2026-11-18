@@ -100,6 +100,18 @@ class PlanTest(unittest.TestCase):
                 MANIFEST.replace("test-coverage.md", "absent.md"),
                 "absent.md",
             ),
+            "prompt not a string or a list": (
+                MANIFEST.replace('"prompts/test-coverage.md"', "1"),
+                "`prompt` must be a str or a list",
+            ),
+            "empty prompt list": (
+                MANIFEST.replace('"prompts/test-coverage.md"', "[]"),
+                "must be a non-empty list of strings",
+            ),
+            "prompt path not a string": (
+                MANIFEST.replace('"prompts/test-coverage.md"', "[1]"),
+                "must be a non-empty list of strings",
+            ),
             "duplicate name": (
                 MANIFEST + MANIFEST.removeprefix('namespace = "example"\n'),
                 "two entries name the task",
@@ -211,6 +223,26 @@ class PlanTest(unittest.TestCase):
                     (call["action"], call["trigger_id"]), ("update", "trig_example")
                 )
                 self.assertEqual(set(call["body"]), keys)
+
+    def test_prompt_list_joins_its_files_in_order(self):
+        manifest = MANIFEST.replace(
+            '"prompts/test-coverage.md"',
+            '["prompts/shared.md", "prompts/test-coverage.md"]',
+        )
+        other = manifest.removeprefix('namespace = "example"\n').replace(
+            'name = "test coverage"', 'name = "other"'
+        )
+        self.write("manifest.toml", manifest + other)
+        self.write("prompts/shared.md", "Shared rules.")
+        joined = "Shared rules.\n\n" + PROMPT.removesuffix("\n")
+        stored = task(derived_state={"model": "claude-opus-5-5", "prompt": joined})
+        tasks = [stored, stored | {"id": "trig_other", "name": "example: other"}]
+        outcomes = self.make_plan(tasks)
+        self.assertEqual([outcome.action for outcome in outcomes], ["unchanged"] * 2)
+        self.write("prompts/shared.md", "Changed rules.\n")
+        outcomes = self.make_plan(tasks)
+        self.assertEqual([outcome.action for outcome in outcomes], ["update"] * 2)
+        self.assertIn("shared.md + ", plan.render(outcomes))
 
     def test_entry_without_effort_omits_effort_level(self):
         self.write("manifest.toml", MANIFEST.replace('effort = "high"\n', ""))
