@@ -9,7 +9,7 @@ format of [`docs/manifest.md`](docs/manifest.md).
 The Claude Code skill `deploy-scheduled-tasks` reads manifests from disk and
 creates or updates their tasks in the session's claude.ai account. The skill can
 be installed from `skills/deploy-scheduled-tasks/`, and it requires Python 3.11
-or later.
+or later. It has been tested only on Linux.
 
 > [!WARNING]
 > The skill manages the tasks through the `RemoteTrigger` tool of Claude Code,
